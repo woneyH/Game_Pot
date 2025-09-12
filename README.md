@@ -18,6 +18,9 @@
 
 <br><br>
 
+<a href="https://github.com/woneyH/gnu-pbl1/blob/main/%EA%B3%84%ED%9A%8D/1%EC%A3%BC%EC%B0%A8/README.md"> 
+2주차 계획</a>
+
 --- 본문 부분  --
 
 ## GNU-PBL1
