@@ -36,6 +36,10 @@
 
 
 ### 프로젝트 수행 목적 
+
+  1차 초기 ERD
+  <img width="2330" height="912" alt="game-pot (1)" src="https://github.com/user-attachments/assets/b275e8ad-3956-4ec5-a914-93d3c29bc784" />
+
   아키텍처 구조, ERD 삽입 예정
 
 
