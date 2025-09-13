@@ -1,5 +1,5 @@
 ---
-name: feature_issue
+name: ✨feature_issue
 about: 기능 구현 이슈 템플
 title: ''
 labels: ''
