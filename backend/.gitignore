@@ -40,6 +40,7 @@ out/
 
 ### properties ###
 /src/resources/application.properties
+/src/resources/application.yml
 
 
 *.sql
@@ -59,3 +60,5 @@ out/
 serviceAccount*.json
 client_secret*.json
 oauth-*.json
+
+
