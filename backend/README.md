@@ -14,6 +14,7 @@
   <li>Intellij</li>
   <li>Gradle - Groovy</li>
   <li>Thymeleaf</li>
+  <li>Microsoft Azure MYSQL(version=8.0)</li>
 </ul>
 
 <br>
