@@ -33,4 +33,4 @@ jobs:
         with:
           app-name: game-pot               # 예: gnu-game-pot
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: backend/build/libs/*.jar
+          package: backend/build/libs/game_pot-0.0.1-SNAPSHOT.jar
