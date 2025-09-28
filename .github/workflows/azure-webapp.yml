@@ -1,5 +1,6 @@
 name: Deploy Spring Boot (Gradle) to Azure App Service
 
+
 on:
   push:
     branches: [ main ]
