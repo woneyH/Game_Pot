@@ -41,7 +41,7 @@ out/
 ### properties ###
 /src/resources/application.properties
 /src/resources/application.yml
-
+/src/resources/application-prod.properties
 
 *.sql
 *.dump
