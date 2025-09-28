@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up Temurin JDK 21
@@ -27,26 +27,11 @@ jobs:
         run: ./gradlew clean bootJar -x test
         working-directory: backend
 
-      # 1. 빌드된 JAR 파일을 Artifact로 '업로드'합니다.
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-package
-          path: backend/build/libs/game_pot-0.0.1-SNAPSHOT.jar # 정확한 JAR 파일 경로
-
-      # 2. 배포 스텝을 위해 Artifact를 '다운로드'합니다.
-      #    파일은 이제 './app-files/' 폴더 안에 들어갑니다.
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: deployment-package
-          path: app-files/
-
-      # 3. Azure Web App에 배포합니다.
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: game-pot
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          # 다운로드된 Artifact 폴더를 패키지로 지정합니다.
-          package: app-files/
+          # JAR 파일 경로를 직접 지정합니다.
+          # 이 파일이 wwwroot의 최상위에 배포됩니다.
+          package: backend/build/libs/game_pot-0.0.1-SNAPSHOT.jar
