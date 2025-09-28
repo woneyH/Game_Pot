@@ -4,9 +4,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
-public class TestController {
-    @GetMapping("/side")
-    public String call(){
-        return "call";
+public class LoginPageController {
+    @GetMapping("/login/success")
+    public String success() {
+        return "forward:/login/success/index.html";
     }
+
 }
