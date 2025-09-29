@@ -1,69 +1,34 @@
 package pbl_game_pot.game_pot.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
- * 팝업 창이 이 HTML을 받아 실행:
- *  - window.opener.postMessage({ type:'DISCORD_LOGIN_SUCCESS', payload:{ user } }, '<프론트-오리진>');
- *  - window.close();
+ * 로그인 성공 시 팝업/HTML 없이 프론트 페이지로 리다이렉트만 수행.
+ * 프론트는 페이지 로드 시 /api/auth/me 를 호출해 사용자 정보를 표시한다.
  */
 @Component
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
-    private final ObjectMapper om = new ObjectMapper();
-
-    // !! 여기에 "프론트 오리진"을 정확하게 넣어주세요 (보안상 * 사용 금지)
-    //    예: https://gamepot.app  또는 http://localhost:5173 (개발용)
-    private static final String FRONT_ORIGIN = "https://<프론트-도메인>";
+    /**
+     * application.properties 에서 주입.
+     * 기본값은 VS Code Live Server 페이지.
+     */
+    @Value("${app.frontend.success-redirect:http://127.0.0.1:5500/index.html}")
+    private String successRedirectUrl;
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest req, HttpServletResponse res, Authentication authentication)
-            throws IOException {
-
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-        var a = oAuth2User.getAttributes();
-
-        var user = Map.of(
-                "id", a.get("id"),
-                "username", a.getOrDefault("username", a.get("global_name")),
-                "global_name", a.get("global_name"),
-                "email", a.get("email"),
-                "avatar", a.get("avatar")
-        );
-
-        String json = om.writeValueAsString(Map.of(
-                "type", "DISCORD_LOGIN_SUCCESS",
-                "payload", Map.of("user", user)
-        ));
-
-        String html = """
-      <!doctype html><meta charset="utf-8">
-      <script>
-      (function(){
-        try{
-          var msg=%s;
-          if(window.opener && !window.opener.closed){
-            window.opener.postMessage(msg, %s);
-          }
-        }catch(e){console.error(e)}
-        window.close();
-      })();
-      </script>
-    """.formatted(esc(json), esc(FRONT_ORIGIN));
-
-        res.setContentType("text/html;charset=UTF-8");
-        res.getWriter().write(html);
-    }
-
-    private String esc(String s){
-        return "\"" + s.replace("\\","\\\\").replace("\"","\\\"") + "\"";
+    public void onAuthenticationSuccess(HttpServletRequest req,
+                                        HttpServletResponse res,
+                                        Authentication authentication) throws IOException {
+        // 세션은 이미 생성/인증됨. 프론트 페이지로 이동시키면
+        // 프론트가 /api/auth/me 를 credentials: include 로 호출해 정보를 얻는다.
+        res.sendRedirect(successRedirectUrl);
     }
 }
