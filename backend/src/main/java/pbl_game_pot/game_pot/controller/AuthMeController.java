@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-public class AuthController {
+public class AuthMeController {
+
     @GetMapping("/api/auth/me")
-    public Map<String,Object> me(@AuthenticationPrincipal OAuth2User user){
-        if (user == null) return Map.of("authenticated", false);
-        var a = user.getAttributes();
+    public Map<String, Object> me(@AuthenticationPrincipal OAuth2User principal) {
+        if (principal == null) {
+            return Map.of("authenticated", false);
+        }
+        var a = principal.getAttributes();
         return Map.of(
                 "authenticated", true,
                 "user", Map.of(
