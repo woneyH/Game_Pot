@@ -4,11 +4,9 @@ package pbl_game_pot.game_pot.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
-import pbl_game_pot.game_pot.security.OAuth2LoginSuccessHandler;
 import pbl_game_pot.game_pot.service.DiscordOAuth2UserService; // 네가 올린 서비스
 
 import java.util.List;
