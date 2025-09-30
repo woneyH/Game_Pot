@@ -30,8 +30,8 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: game-pot
+          app-name: gamepot
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           # JAR 파일 경로를 직접 지정합니다.
           # 이 파일이 wwwroot의 최상위에 배포됩니다.
-          package: backend/build/libs/game_pot-0.0.1-SNAPSHOT.jar
+          package: backend/build/libs/*.jar
