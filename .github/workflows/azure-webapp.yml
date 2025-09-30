@@ -35,3 +35,5 @@ jobs:
           # JAR 파일 경로를 직접 지정합니다.
           # 이 파일이 wwwroot의 최상위에 배포됩니다.
           package: backend/build/libs/*.jar
+
+          clean: true
