@@ -1,4 +1,3 @@
-// src/main/java/com/gp/auth/user/service/DiscordOAuth2UserService.java
 package pbl_game_pot.game_pot.service;
 
 import lombok.RequiredArgsConstructor;
@@ -41,6 +40,6 @@ public class DiscordOAuth2UserService extends DefaultOAuth2UserService {
                         .email(email)
                         .build()));
 
-        return user; // SecurityContext에 보관 → 성공 핸들러에서 /login/success로 보냄
+        return user;
     }
 }

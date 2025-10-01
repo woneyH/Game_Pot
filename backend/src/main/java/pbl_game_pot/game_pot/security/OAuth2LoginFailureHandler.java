@@ -13,7 +13,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
     @Override
     public void onAuthenticationFailure(HttpServletRequest req,
                                         HttpServletResponse res,
-                                        AuthenticationException ex) throws IOException, IOException {
+                                        AuthenticationException ex) throws IOException {
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         res.setContentType("application/json; charset=UTF-8");
         String msg = ex.getMessage() == null ? "Authentication failed" : ex.getMessage().replace("\"","\\\"");
