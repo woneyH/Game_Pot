@@ -17,7 +17,7 @@ public class SecurityConfig {
     private final OAuth2LoginSuccessHandler successHandler;
     private final DiscordOAuth2UserService discordOAuth2UserService;
 
-    @Value("${app.frontend.origins:http://127.0.0.1:5500,http://localhost:5500}")
+    @Value("${app.frontend.origins}")
     private String frontendOrigins;
 
     public SecurityConfig(OAuth2LoginSuccessHandler successHandler,
@@ -36,12 +36,9 @@ public class SecurityConfig {
                     conf.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
                     conf.setAllowedHeaders(List.of("*"));
                     conf.setAllowCredentials(true);
-
-                    // 👇 'export default' 라인을 완전히 삭제했습니다.
                     return conf;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        // ... (이하 동일) ...
                         .requestMatchers("/", "/index.html", "/favicon.*", "/manifest.*",
                                 "/assets/**", "/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/**").permitAll()
