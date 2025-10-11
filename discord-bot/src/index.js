@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
 });
 
 // ✅ 웹사이트 파티 생성 엔드포인트
-const TARGET_GUILD_ID = '여기에_특정_Discord_서버_ID_입력'; // 👈 여기에 서버 ID 입력 필수!
+const TARGET_GUILD_ID = '1420237416718929971'; // 👈 여기에 서버 ID 입력 필수!
 
 // 유저 ID 배열의 유효성을 검사하는 헬퍼 함수
 function ArrayOfStringsOrNumbers(arr) {
@@ -252,7 +252,6 @@ client.on('voiceStateUpdate', (oldState, newState) => {
         if (activeChannels.has(channel.id)) {
             clearTimeout(activeChannels.get(channel.id));
             activeChannels.delete(channel.id);
-            // 🎯 불필요한 로그 제거: console.log(`✅ ${channel.name} 채널에 멤버가 들어와 삭제 타이머를 취소합니다.`);
         }
     }
 });
@@ -261,7 +260,6 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 
 // ✅ 봇 로그인 및 서버 리스닝
 client.login(process.env.BOT_TOKEN);
-// 🎯 불필요한 로그 제거: app.listen(port, () => { console.log(`✅ 웹 서버가 포트 ${port}에서 구동 중입니다.`); });
 app.listen(port, () => {
     // 봇이 켜졌는지 확인하는 필수 로그만 남김
     console.log(`✅ Discord Bot service started on port ${port}`);
