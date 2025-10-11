@@ -22,10 +22,15 @@ const app = express();
 const port = process.env.PORT || 3000;
 app.use(express.json()); // JSON 본문을 파싱할 수 있도록 설정
 
+// 🎯 CORS 모듈 가져오기 (파일 상단에 const cors = require('cors');를 추가했다면)
+const cors = require('cors'); 
+
 // 24시간 구동을 위한 Ping 엔드포인트
 app.get('/', (req, res) => {
     res.status(200).send('Discord Bot is running and ready for pings.');
 });
+app.use(cors()); // 👈 이 코드를 추가하여 모든 도메인에서의 접근을 허용합니다.
+app.use(express.json()); 
 
 // ✅ 웹사이트 파티 생성 엔드포인트
 const TARGET_GUILD_ID = '1420237416718929971'; // 👈 봇이 작동할 서버 ID를 넣어주세요!
