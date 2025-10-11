@@ -15,7 +15,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildMembers // 👈 멤버 캐싱을 위한 인텐트 (개발자 포털에서도 활성화 필수)
+        GatewayIntentBits.GuildMembers // 멤버 캐싱 인텐트 (필요함)
     ]
 });
 
@@ -23,7 +23,7 @@ const client = new Client({
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors()); // CORS 설정 (모든 외부 요청 허용)
+app.use(cors()); // CORS 설정
 app.use(express.json()); 
 
 // 24시간 구동을 위한 Ping 엔드포인트
@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
 });
 
 // ✅ 웹사이트 파티 생성 엔드포인트
-const TARGET_GUILD_ID = '1420237416718929971'; // 👈 여기에 서버 ID 입력 필수!
+const TARGET_GUILD_ID = '1420237416718929971';
 
 // 유저 ID 배열의 유효성을 검사하는 헬퍼 함수
 function ArrayOfStringsOrNumbers(arr) {
@@ -40,7 +40,6 @@ function ArrayOfStringsOrNumbers(arr) {
 }
 
 app.post('/api/create-party', async (req, res) => {
-    // 🎯 1. 유저 ID 배열을 받습니다. (memberIds)
     const { memberIds } = req.body; 
 
     if (!memberIds || !ArrayOfStringsOrNumbers(memberIds) || memberIds.length === 0) {
@@ -53,15 +52,23 @@ app.post('/api/create-party', async (req, res) => {
     }
 
     try {
-        // 🎯 2. 멤버 객체 생성 및 유효성 검사 (fetch 없이 캐시만 사용)
-        // memberIds를 사용하여 캐시에서 멤버 객체를 찾아 필터링합니다.
-        const members = memberIds.map(id => guild.members.cache.get(id)).filter(m => m);
+        // 🎯 1. fetch를 사용하여 유효성 검사 (Timeout 위험 감수)
+        const fetchedMembers = await Promise.all(
+            memberIds.map(id => 
+                // 👈 fetch()를 사용해 캐시 상태와 무관하게 Discord API에 요청
+                guild.members.fetch(id).catch(() => null) 
+            )
+        );
+
+        // 2. 유효한 멤버만 필터링
+        const members = fetchedMembers.filter(m => m);
         
-        // 🎯 3. 찾지 못한 ID 확인
-        const notFoundIds = memberIds.filter(id => !members.map(m => m.id).includes(id));
+        // 3. 찾지 못한 ID 확인
+        const foundIds = members.map(m => m.id);
+        const notFoundIds = memberIds.filter(id => !foundIds.includes(id));
 
         if (members.length === 0) {
-            return res.status(400).send({ error: '제공된 ID로 유효한 멤버를 찾을 수 없습니다. 서버 가입 상태와 온라인 여부를 확인하세요.' });
+            return res.status(400).send({ error: '제공된 ID로 유효한 멤버를 찾을 수 없습니다. 서버 가입 상태를 확인하세요.' });
         }
         
         // --- 채널 생성 및 권한 설정 로직 ---
@@ -98,13 +105,18 @@ app.post('/api/create-party', async (req, res) => {
 
         res.status(200).send({ 
             message: `Party channel created for ${members.length} members.`,
-            inviteLink: inviteLink, // 👈 JSON 응답에 링크 포함
-            notFoundIds: notFoundIds // 👈 찾지 못한 ID 목록 반환
+            inviteLink: inviteLink, 
+            notFoundIds: notFoundIds 
         });
 
     } catch (err) {
+        // 🎯 Timeout 오류 발생 시 서버가 죽는 대신 오류 메시지를 반환
+        if (err.code === 'GuildMembersTimeout') {
+             console.error('Web Channel creation error: GuildMembersTimeout');
+             return res.status(503).send({ error: '서버 통신 시간 초과 (Discord API Timeout). 잠시 후 다시 시도하세요.' });
+        }
         console.error('Web Channel creation fatal error:', err);
-        res.status(500).send({ error: 'Internal server error during channel creation.' });
+        res.status(500).send({ error: `내부 서버 오류: ${err.code || 'Internal Error'}` });
     }
 });
 
@@ -151,7 +163,6 @@ client.on('interactionCreate', async (interaction) => {
             interaction.options.getUser('user2')?.id,
         ].filter(id => id); 
         
-        // 명령어 사용자는 항상 포함
         if (!memberIds.includes(interaction.user.id)) {
             memberIds.push(interaction.user.id);
         }
@@ -164,7 +175,7 @@ client.on('interactionCreate', async (interaction) => {
         }
         
         try {
-            // 🎯 멤버 객체 생성 (캐시만 사용)
+            // 슬래시 명령어는 이미 유효성 검사를 거치므로 캐시만 사용합니다.
             const members = memberIds.map(id => guild.members.cache.get(id)).filter(m => m);
             
             const permissionOverwrites = [
@@ -178,7 +189,7 @@ client.on('interactionCreate', async (interaction) => {
             const channel = await guild.channels.create({ name: channelName, type: 2, permissionOverwrites });
             ephemeralChannels.add(channel.id);
 
-            // 🎯 초대 링크 생성 로직
+            // 초대 링크 생성 로직
             let inviteLink = "링크 생성 실패";
             try {
                 const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true });
