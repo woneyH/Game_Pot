@@ -1,13 +1,13 @@
 // 1. 주요 클래스 및 모듈 가져오기
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, PermissionFlagsBits } = require('discord.js');
 const express = require('express');
-const cors = require('cors'); // CORS 미들웨어 사용
+const cors = require('cors'); 
 require('dotenv').config();
 
-// ✅ REST 클라이언트를 최상단에서 초기화
+// ✅ REST 클라이언트 초기화
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
 
-// ✅ 채널 삭제 타이머 및 임시 채널 ID를 저장할 Map과 Set
+// ✅ 채널 관리용 Map과 Set
 const activeChannels = new Map();
 const ephemeralChannels = new Set(); 
 
@@ -15,7 +15,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildMembers // 멤버 캐싱 인텐트 (필요함)
+        GatewayIntentBits.GuildMembers // 멤버 캐싱 인텐트
     ]
 });
 
@@ -23,7 +23,7 @@ const client = new Client({
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors()); // CORS 설정
+app.use(cors()); // CORS 설정 (모든 외부 요청 허용)
 app.use(express.json()); 
 
 // 24시간 구동을 위한 Ping 엔드포인트
@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
 });
 
 // ✅ 웹사이트 파티 생성 엔드포인트
-const TARGET_GUILD_ID = '1420237416718929971';
+const TARGET_GUILD_ID = '여기에_특정_Discord_서버_ID_입력'; // 👈 여기에 서버 ID 입력 필수!
 
 // 유저 ID 배열의 유효성을 검사하는 헬퍼 함수
 function ArrayOfStringsOrNumbers(arr) {
@@ -42,6 +42,7 @@ function ArrayOfStringsOrNumbers(arr) {
 app.post('/api/create-party', async (req, res) => {
     const { memberIds } = req.body; 
 
+    // 1. 유효성 검사
     if (!memberIds || !ArrayOfStringsOrNumbers(memberIds) || memberIds.length === 0) {
         return res.status(400).send({ error: '유저 ID 배열(memberIds)이 비어있거나 올바르지 않습니다.' });
     }
@@ -52,18 +53,17 @@ app.post('/api/create-party', async (req, res) => {
     }
 
     try {
-        // 🎯 1. fetch를 사용하여 유효성 검사 (Timeout 위험 감수)
+        // 🎯 2. fetch를 사용하여 유효성 검사 및 멤버 정보 가져오기 (정확성 확보)
         const fetchedMembers = await Promise.all(
             memberIds.map(id => 
-                // 👈 fetch()를 사용해 캐시 상태와 무관하게 Discord API에 요청
                 guild.members.fetch(id).catch(() => null) 
             )
         );
 
-        // 2. 유효한 멤버만 필터링
+        // 3. 유효한 멤버만 필터링
         const members = fetchedMembers.filter(m => m);
         
-        // 3. 찾지 못한 ID 확인
+        // 4. 찾지 못한 ID 확인
         const foundIds = members.map(m => m.id);
         const notFoundIds = memberIds.filter(id => !foundIds.includes(id));
 
@@ -94,12 +94,13 @@ app.post('/api/create-party', async (req, res) => {
 
         ephemeralChannels.add(channel.id); 
 
-        // 🎯 초대 링크 생성 로직 추가
+        // 🎯 초대 링크 생성 로직
         let inviteLink = "링크 생성 실패";
         try {
             const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true });
             inviteLink = invite.url;
         } catch (inviteError) {
+            // 콘솔에만 오류 출력 (외부 응답에는 포함되지 않음)
             console.error("⚠️ 웹 요청 처리 중 초대 링크 생성 권한 오류:", inviteError);
         }
 
@@ -110,8 +111,9 @@ app.post('/api/create-party', async (req, res) => {
         });
 
     } catch (err) {
-        // 🎯 Timeout 오류 발생 시 서버가 죽는 대신 오류 메시지를 반환
+        // Timeout 오류 발생 시 503 오류와 함께 상세 코드 반환
         if (err.code === 'GuildMembersTimeout') {
+             // 🎯 콘솔에만 오류 출력
              console.error('Web Channel creation error: GuildMembersTimeout');
              return res.status(503).send({ error: '서버 통신 시간 초과 (Discord API Timeout). 잠시 후 다시 시도하세요.' });
         }
@@ -139,13 +141,13 @@ const commands = [
 
 // 봇이 준비되면 명령어 등록
 client.once('ready', async () => {
-    console.log(`✅ 로그인됨: ${client.user.tag}`);
+    // 🎯 불필요한 로그 제거: console.log(`✅ 로그인됨: ${client.user.tag}`);
     try {
         await rest.put(
             Routes.applicationCommands(client.user.id),
             { body: commands }
         );
-        console.log('✅ 슬래시 명령어 등록 완료');
+        // 🎯 불필요한 로그 제거: console.log('✅ 슬래시 명령어 등록 완료');
     } catch (error) {
         console.error('⚠️ 슬래시 명령어 등록 중 오류 발생:', error);
     }
@@ -195,10 +197,10 @@ client.on('interactionCreate', async (interaction) => {
                 const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true });
                 inviteLink = invite.url;
             } catch (inviteError) {
-                console.error("⚠️ 슬래시 명령 중 초대 링크 생성 권한 오류:", inviteError);
+                // 🎯 불필요한 로그 제거: console.error("⚠️ 슬래시 명령 중 초대 링크 생성 권한 오류:", inviteError);
             }
             
-            console.log(`🎉 [SLASH] 성공적으로 임시 채널 생성됨: ${channelName}. 링크: ${inviteLink}`); 
+            // 🎯 불필요한 로그 제거: console.log(`🎉 [SLASH] 성공적으로 임시 채널 생성됨: ${channelName}. 링크: ${inviteLink}`); 
 
             await interaction.reply({
                 content: `✅ 임시 음성채널 생성됨: ${channel} \n🔗 **초대 링크:** ${inviteLink}`,
@@ -226,12 +228,12 @@ client.on('voiceStateUpdate', (oldState, newState) => {
         if (ephemeralChannels.has(channel.id)) { 
             if (channel.members.size === 0) {
                 if (!activeChannels.has(channel.id)) {
-                    console.log(`✅ ${channel.name} 채널이 비었습니다. 1분 후 삭제됩니다.`);
+                    // 🎯 불필요한 로그 제거: console.log(`✅ ${channel.name} 채널이 비었습니다. 1분 후 삭제됩니다.`);
                     const timer = setTimeout(() => {
                         if (channel.members.size === 0) {
                             channel.delete()
                                 .then(deletedChannel => {
-                                    console.log(`✅ 비어있는 임시 채널 '${deletedChannel.name}' 삭제 완료`);
+                                    // 🎯 불필요한 로그 제거: console.log(`✅ 비어있는 임시 채널 '${deletedChannel.name}' 삭제 완료`);
                                     ephemeralChannels.delete(deletedChannel.id); 
                                 })
                                 .catch(err => console.error(`⚠️ 채널 삭제 중 오류 발생: ${err}`));
@@ -250,7 +252,7 @@ client.on('voiceStateUpdate', (oldState, newState) => {
         if (activeChannels.has(channel.id)) {
             clearTimeout(activeChannels.get(channel.id));
             activeChannels.delete(channel.id);
-            console.log(`✅ ${channel.name} 채널에 멤버가 들어와 삭제 타이머를 취소합니다.`);
+            // 🎯 불필요한 로그 제거: console.log(`✅ ${channel.name} 채널에 멤버가 들어와 삭제 타이머를 취소합니다.`);
         }
     }
 });
@@ -259,6 +261,8 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 
 // ✅ 봇 로그인 및 서버 리스닝
 client.login(process.env.BOT_TOKEN);
+// 🎯 불필요한 로그 제거: app.listen(port, () => { console.log(`✅ 웹 서버가 포트 ${port}에서 구동 중입니다.`); });
 app.listen(port, () => {
-    console.log(`✅ 웹 서버가 포트 ${port}에서 구동 중입니다.`);
+    // 봇이 켜졌는지 확인하는 필수 로그만 남김
+    console.log(`✅ Discord Bot service started on port ${port}`);
 });
