@@ -34,11 +34,17 @@ app.get('/', (req, res) => {
 // ✅ 웹사이트 파티 생성 엔드포인트
 const TARGET_GUILD_ID = '1420237416718929971'; // 👈 여기에 서버 ID 입력 필수!
 
-app.post('/api/create-party', async (req, res) => {
-    const { memberNames } = req.body; 
+// 유저 ID 배열의 유효성을 검사하는 헬퍼 함수
+function ArrayOfStringsOrNumbers(arr) {
+    return Array.isArray(arr) && arr.every(item => typeof item === 'string' || typeof item === 'number');
+}
 
-    if (!memberNames || !Array.isArray(memberNames) || memberNames.length === 0) {
-        return res.status(400).send({ error: 'memberNames 배열이 비어있거나 올바르지 않습니다.' });
+app.post('/api/create-party', async (req, res) => {
+    // 🎯 1. 유저 ID 배열을 받습니다. (memberIds)
+    const { memberIds } = req.body; 
+
+    if (!memberIds || !ArrayOfStringsOrNumbers(memberIds) || memberIds.length === 0) {
+        return res.status(400).send({ error: '유저 ID 배열(memberIds)이 비어있거나 올바르지 않습니다.' });
     }
 
     const guild = client.guilds.cache.get(TARGET_GUILD_ID); 
@@ -47,32 +53,16 @@ app.post('/api/create-party', async (req, res) => {
     }
 
     try {
-        // 🎯 1. fetch 없이 캐시만 사용 (Timeout 방지)
-        const memberIds = [];
-        const notFoundNames = [];
-
-        // 닉네임을 유저 ID로 변환 (캐시된 멤버만 대상)
-        for (const name of memberNames) {
-            const member = guild.members.cache.find(m => 
-                m.displayName.toLowerCase() === name.toLowerCase() ||
-                m.user.username.toLowerCase() === name.toLowerCase()
-            );
-            
-            if (member) {
-                if (!memberIds.includes(member.user.id)) {
-                     memberIds.push(member.user.id);
-                }
-            } else {
-                notFoundNames.push(name);
-            }
-        }
-        
-        if (memberIds.length === 0) {
-            return res.status(400).send({ error: '제공된 이름으로 유효한 멤버를 찾을 수 없습니다.' });
-        }
-
-        // 🎯 2. 멤버 객체 생성 (캐시된 ID만 사용)
+        // 🎯 2. 멤버 객체 생성 및 유효성 검사 (fetch 없이 캐시만 사용)
+        // memberIds를 사용하여 캐시에서 멤버 객체를 찾아 필터링합니다.
         const members = memberIds.map(id => guild.members.cache.get(id)).filter(m => m);
+        
+        // 🎯 3. 찾지 못한 ID 확인
+        const notFoundIds = memberIds.filter(id => !members.map(m => m.id).includes(id));
+
+        if (members.length === 0) {
+            return res.status(400).send({ error: '제공된 ID로 유효한 멤버를 찾을 수 없습니다. 서버 가입 상태와 온라인 여부를 확인하세요.' });
+        }
         
         // --- 채널 생성 및 권한 설정 로직 ---
         const permissionOverwrites = [
@@ -107,9 +97,9 @@ app.post('/api/create-party', async (req, res) => {
         }
 
         res.status(200).send({ 
-            message: `Party channel created for ${memberIds.length} members.`,
+            message: `Party channel created for ${members.length} members.`,
             inviteLink: inviteLink, // 👈 JSON 응답에 링크 포함
-            notFound: notFoundNames 
+            notFoundIds: notFoundIds // 👈 찾지 못한 ID 목록 반환
         });
 
     } catch (err) {
@@ -161,6 +151,7 @@ client.on('interactionCreate', async (interaction) => {
             interaction.options.getUser('user2')?.id,
         ].filter(id => id); 
         
+        // 명령어 사용자는 항상 포함
         if (!memberIds.includes(interaction.user.id)) {
             memberIds.push(interaction.user.id);
         }
@@ -173,6 +164,7 @@ client.on('interactionCreate', async (interaction) => {
         }
         
         try {
+            // 🎯 멤버 객체 생성 (캐시만 사용)
             const members = memberIds.map(id => guild.members.cache.get(id)).filter(m => m);
             
             const permissionOverwrites = [
