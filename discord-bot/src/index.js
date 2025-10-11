@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
 });
 
 // ✅ 웹사이트 파티 생성 엔드포인트
-const TARGET_GUILD_ID = '여기에_특정_Discord_서버_ID_입력'; // 👈 봇이 작동할 서버 ID를 넣어주세요!
+const TARGET_GUILD_ID = '1420237416718929971'; // 👈 봇이 작동할 서버 ID를 넣어주세요!
 
 app.post('/api/create-party', async (req, res) => {
     const { memberNames } = req.body; 
@@ -92,8 +92,23 @@ app.post('/api/create-party', async (req, res) => {
 
         ephemeralChannels.add(channel.id); // 봇이 만든 임시 채널 ID를 Set에 저장
 
+        // 🎯 초대 링크 생성 로직 추가
+        let inviteLink = "링크 생성 실패";
+        try {
+            const invite = await channel.createInvite({
+                maxAge: 0, 
+                maxUses: 0, 
+                unique: true
+            });
+            inviteLink = invite.url;
+        } catch (inviteError) {
+            console.error("⚠️ 웹 요청 처리 중 초대 링크 생성 권한 오류:", inviteError);
+            // 권한이 없다면 링크 생성 없이 진행
+        }
+
         res.status(200).send({ 
             message: `Party channel created for ${memberIds.length} members.`,
+            inviteLink: inviteLink, // 👈 JSON 응답에 링크 추가
             notFound: notFoundNames 
         });
 
@@ -105,7 +120,7 @@ app.post('/api/create-party', async (req, res) => {
 
 // ---
 
-// ✅ 슬래시 명령어 등록 (솔로 파티 제거, 옵션 필수화)
+// ✅ 슬래시 명령어 등록 
 const commands = [
     new SlashCommandBuilder()
         .setName('party')
@@ -153,9 +168,8 @@ client.on('interactionCreate', async (interaction) => {
             memberIds.push(interaction.user.id);
         }
 
-        // 👈 솔로 파티 제거: 멤버가 1명 이상이어야 함 (명령어 사용자는 항상 포함되므로)
         if (memberIds.length === 0) {
-             return await interaction.reply({ 
+              return await interaction.reply({ 
                 content: '⚠️ 파티를 만들 유효한 멤버를 찾을 수 없습니다.', 
                 flags: 1 << 6
             });
@@ -179,11 +193,20 @@ client.on('interactionCreate', async (interaction) => {
             const channel = await guild.channels.create({ name: channelName, type: 2, permissionOverwrites });
             ephemeralChannels.add(channel.id);
 
-            // 👈 성공 로그 추가
-            console.log(`🎉 [SLASH] 성공적으로 임시 채널 생성됨: ${channelName} by ${interaction.user.tag}`); 
+            // 🎯 초대 링크 생성 로직 추가 (슬래시 명령어)
+            let inviteLink = "링크 생성 실패";
+            try {
+                const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true });
+                inviteLink = invite.url;
+            } catch (inviteError) {
+                console.error("⚠️ 슬래시 명령 중 초대 링크 생성 권한 오류:", inviteError);
+            }
+            // 👈 성공 로그에 링크 포함
+            console.log(`🎉 [SLASH] 성공적으로 임시 채널 생성됨: ${channelName}. 링크: ${inviteLink}`); 
 
             await interaction.reply({
-                content: `✅ 임시 음성채널 생성됨: ${channel}`,
+                // 👈 응답 메시지에 링크 포함
+                content: `✅ 임시 음성채널 생성됨: ${channel} \n🔗 **초대 링크:** ${inviteLink}`,
                 ephemeral: false
             });
 
@@ -199,13 +222,12 @@ client.on('interactionCreate', async (interaction) => {
 
 // ---
 
-// ✅ 음성 채널 상태 변경 감지 이벤트 (ID 관리 로직)
+// ✅ 음성 채널 상태 변경 감지 이벤트 (ID 관리 로직은 변경 없음)
 client.on('voiceStateUpdate', (oldState, newState) => {
     // 1. 채널 퇴장 시 (채널이 비었는지 확인)
     if (oldState.channelId && !newState.channelId) {
         const channel = oldState.channel;
         
-        // 🎯 핵심: 채널 이름 대신 ephemeralChannels Set에 ID가 있는지 확인
         if (ephemeralChannels.has(channel.id)) { 
             if (channel.members.size === 0) {
                 if (!activeChannels.has(channel.id)) {
