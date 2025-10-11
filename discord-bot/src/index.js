@@ -1,7 +1,7 @@
 // 1. 주요 클래스 및 모듈 가져오기
 const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, PermissionFlagsBits } = require('discord.js');
 const express = require('express');
-const cors = require('cors'); // CORS 미들웨어 추가
+const cors = require('cors'); // CORS 미들웨어 사용
 require('dotenv').config();
 
 // ✅ REST 클라이언트를 최상단에서 초기화
@@ -15,7 +15,7 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildMembers // 👈 멤버 캐싱을 위한 인텐트 (필수)
+        GatewayIntentBits.GuildMembers // 👈 멤버 캐싱을 위한 인텐트 (개발자 포털에서도 활성화 필수)
     ]
 });
 
@@ -23,8 +23,7 @@ const client = new Client({
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 🎯 CORS 설정 추가 (모든 외부 요청 허용)
-app.use(cors()); 
+app.use(cors()); // CORS 설정 (모든 외부 요청 허용)
 app.use(express.json()); 
 
 // 24시간 구동을 위한 Ping 엔드포인트
@@ -33,7 +32,7 @@ app.get('/', (req, res) => {
 });
 
 // ✅ 웹사이트 파티 생성 엔드포인트
-const TARGET_GUILD_ID = '1420237416718929971'; 
+const TARGET_GUILD_ID = '1420237416718929971'; // 👈 여기에 서버 ID 입력 필수!
 
 app.post('/api/create-party', async (req, res) => {
     const { memberNames } = req.body; 
@@ -48,12 +47,11 @@ app.post('/api/create-party', async (req, res) => {
     }
 
     try {
-        // 🎯 1. fetch 없이 캐시만 사용 (Timeout 방지 최적화)
+        // 🎯 1. fetch 없이 캐시만 사용 (Timeout 방지)
         const memberIds = [];
         const notFoundNames = [];
 
-        // guild.members.fetch(); 호출 제거
-
+        // 닉네임을 유저 ID로 변환 (캐시된 멤버만 대상)
         for (const name of memberNames) {
             const member = guild.members.cache.find(m => 
                 m.displayName.toLowerCase() === name.toLowerCase() ||
@@ -61,7 +59,6 @@ app.post('/api/create-party', async (req, res) => {
             );
             
             if (member) {
-                // 중복 방지를 위해 Set 대신 Array에 push
                 if (!memberIds.includes(member.user.id)) {
                      memberIds.push(member.user.id);
                 }
@@ -111,7 +108,7 @@ app.post('/api/create-party', async (req, res) => {
 
         res.status(200).send({ 
             message: `Party channel created for ${memberIds.length} members.`,
-            inviteLink: inviteLink, 
+            inviteLink: inviteLink, // 👈 JSON 응답에 링크 포함
             notFound: notFoundNames 
         });
 
@@ -123,7 +120,7 @@ app.post('/api/create-party', async (req, res) => {
 
 // ---
 
-// ✅ 슬래시 명령어 등록 
+// ✅ 슬래시 명령어 등록 (SLASH COMMANDS)
 const commands = [
     new SlashCommandBuilder()
         .setName('party')
@@ -162,7 +159,6 @@ client.on('interactionCreate', async (interaction) => {
         const memberIds = [
             interaction.options.getUser('user1')?.id,
             interaction.options.getUser('user2')?.id,
-            // ... 다른 user option ID
         ].filter(id => id); 
         
         if (!memberIds.includes(interaction.user.id)) {
@@ -177,11 +173,8 @@ client.on('interactionCreate', async (interaction) => {
         }
         
         try {
-            // 🎯 멤버 객체 생성 (캐시만 사용)
             const members = memberIds.map(id => guild.members.cache.get(id)).filter(m => m);
             
-            // ... (채널 생성 로직)
-
             const permissionOverwrites = [
                 { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect] },
                 ...members.map(member => ({ id: member.user.id, allow: [PermissionFlagsBits.Connect] }))
@@ -193,7 +186,7 @@ client.on('interactionCreate', async (interaction) => {
             const channel = await guild.channels.create({ name: channelName, type: 2, permissionOverwrites });
             ephemeralChannels.add(channel.id);
 
-            // 🎯 초대 링크 생성 로직 (슬래시 명령어)
+            // 🎯 초대 링크 생성 로직
             let inviteLink = "링크 생성 실패";
             try {
                 const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: true });
@@ -221,7 +214,7 @@ client.on('interactionCreate', async (interaction) => {
 
 // ---
 
-// ✅ 음성 채널 상태 변경 감지 이벤트 (ID 관리 로직은 변경 없음)
+// ✅ 음성 채널 상태 변경 감지 이벤트 (ID 관리 로직)
 client.on('voiceStateUpdate', (oldState, newState) => {
     // 1. 채널 퇴장 시 (채널이 비었는지 확인)
     if (oldState.channelId && !newState.channelId) {
