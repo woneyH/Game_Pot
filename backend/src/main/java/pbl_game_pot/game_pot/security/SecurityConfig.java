@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .cors(c -> c.configurationSource(req -> {
                     var conf = new CorsConfiguration();
                     conf.setAllowedOrigins(List.of(frontendOrigins.split(",")));
-                    conf.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                    conf.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     conf.setAllowedHeaders(List.of("*"));
                     conf.setAllowCredentials(true);
                     return conf;
