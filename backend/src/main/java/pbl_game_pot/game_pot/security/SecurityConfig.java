@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .cors(c -> c.configurationSource(req -> {
                     var conf = new CorsConfiguration();
                     conf.setAllowedOrigins(List.of(frontendOrigins.split(",")));
-                    conf.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                    conf.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     conf.setAllowedHeaders(List.of("*"));
                     conf.setAllowCredentials(true);
                     return conf;
@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/**", "/login/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
+                        .requestMatchers("/api/match/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth

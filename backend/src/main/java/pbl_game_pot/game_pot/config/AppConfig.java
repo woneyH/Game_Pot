@@ -1,4 +1,4 @@
-package pbl_game_pot.game_pot.steam_test;
+package pbl_game_pot.game_pot.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
