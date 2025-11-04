@@ -98,4 +98,18 @@ public class MatchingController {
 
         return ResponseEntity.ok(usersInQueue);
     }
+
+    @PostMapping("/stop")
+    public ResponseEntity<?> stopMatching(@AuthenticationPrincipal OAuth2User principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+
+        String discordId = String.valueOf(principal.getAttributes().get("id"));
+        UserTable user = userRepository.findByDiscordId(discordId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // 이 메서드는 MatchingQueueRepository에 이미 존재합니다.
+        matchingQueueRepository.deleteByUser(user);
+
+        return ResponseEntity.ok(Map.of("status", "matching stopped"));
+    }
 }

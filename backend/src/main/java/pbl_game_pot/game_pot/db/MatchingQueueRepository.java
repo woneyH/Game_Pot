@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 import pbl_game_pot.game_pot.db.UserTable;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +19,7 @@ public interface MatchingQueueRepository extends JpaRepository<MatchingQueue, Lo
     // 특정 유저가 대기 중인 모든 매칭 상태 삭제 (매칭 시작 시 이전 매칭 취소용)
     @Transactional
     void deleteByUser(UserTable user);
+
+    @Transactional
+    int deleteByCreatedAtBefore(LocalDateTime timestamp);
 }
