@@ -1,6 +1,7 @@
 package pbl_game_pot.game_pot.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/match")
 @RequiredArgsConstructor
+@Slf4j
 public class MatchingController {
 
     private final UserRepository userRepository;
@@ -26,75 +28,78 @@ public class MatchingController {
     private final MatchingQueueRepository matchingQueueRepository;
     private final SteamApiService steamApiService;
 
-    // 프론트에서 받을 DTO
     public record MatchRequestDto(String gameName) {}
-
-    // 프론트에 보낼 DTO
     public record MatchResponseDto(Long gameId, String gameName, String status) {}
-
-    // 매칭 상태 응답 DTO (Discord ID 제거, Email 추가)
+    // [수정됨] DTO: Discord ID 제거, Email 추가
     public record MatchUserDto(String username, String displayName, String email) {}
 
 
-    /**
-     * 특정 게임에 대한 매칭을 시작합니다.
-     */
     @PostMapping("/start")
     @Transactional
     public ResponseEntity<?> startMatching(
             @AuthenticationPrincipal OAuth2User principal,
             @RequestBody MatchRequestDto request) {
 
-        // 1. 로그인한 유저 확인
-        if (principal == null) return ResponseEntity.status(401).build();
-        String discordId = String.valueOf(principal.getAttributes().get("id"));
-        UserTable user = userRepository.findByDiscordId(discordId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found in DB"));
+        try {
+            // 1. 유저 인증 확인
+            if (principal == null) return ResponseEntity.status(401).build();
+            String discordId = String.valueOf(principal.getAttributes().get("id"));
+            UserTable user = userRepository.findByDiscordId(discordId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // 2. Steam API (실제)에서 게임 정보 검색
-        SteamApiService.SteamGameInfo gameInfo = steamApiService.findGameOnSteam(request.gameName());
-        if (gameInfo == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Game not found on Steam"));
+            String inputGameName = request.gameName();
+            if (inputGameName == null || inputGameName.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "게임 이름을 입력해주세요."));
+            }
+
+            // 2. 스팀 API 검색 (별명 처리 포함)
+            SteamApiService.SteamGameInfo gameInfo = steamApiService.findGameOnSteam(inputGameName);
+
+            if (gameInfo == null) {
+                // 검색 실패 시
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "'" + inputGameName + "' 게임을 찾을 수 없습니다. (스팀 공식 영문명으로 시도해보세요)"));
+            }
+
+            // 3. DB 저장 또는 조회
+            Game game = gameRepository.findBySteamAppId(gameInfo.steamAppId())
+                    .orElseGet(() -> {
+                        Game newGame = Game.builder()
+                                .steamAppId(gameInfo.steamAppId())
+                                .name(gameInfo.name())
+                                .build();
+                        return gameRepository.save(newGame);
+                    });
+
+            // 4. 기존 매칭 취소 후 새 매칭 등록
+            matchingQueueRepository.deleteByUser(user);
+
+            MatchingQueue newMatch = MatchingQueue.builder()
+                    .user(user)
+                    .game(game)
+                    .build();
+            matchingQueueRepository.save(newMatch);
+
+            return ResponseEntity.ok(new MatchResponseDto(game.getId(), game.getName(), "Matching started"));
+
+        } catch (Exception e) {
+            log.error("매칭 시작 중 서버 오류 발생", e);
+            // 프론트엔드에 구체적인 에러 메시지 전달
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "서버 오류 발생: " + e.getMessage()));
         }
-
-        // 3. DB에서 게임 정보 찾기 (없으면 새로 저장)
-        Game game = gameRepository.findBySteamAppId(gameInfo.steamAppId())
-                .orElseGet(() -> {
-                    Game newGame = Game.builder()
-                            .steamAppId(gameInfo.steamAppId())
-                            .name(gameInfo.name())
-                            .build();
-                    return gameRepository.save(newGame);
-                });
-
-        // 4. 유저가 다른 게임에 이미 매칭 중인지 확인 및 기존 매칭 취소
-        matchingQueueRepository.deleteByUser(user);
-
-        // 5. 새 매칭 대기열(MatchingQueue)에 유저 추가
-        MatchingQueue newMatch = MatchingQueue.builder()
-                .user(user)
-                .game(game)
-                .build();
-        matchingQueueRepository.save(newMatch);
-
-        return ResponseEntity.ok(new MatchResponseDto(game.getId(), game.getName(), "Matching started"));
     }
 
-    /**
-     * 특정 게임의 현재 매칭 대기열 상태를 조회합니다.
-     */
     @GetMapping("/status/{gameId}")
     public ResponseEntity<?> getMatchingStatus(@PathVariable Long gameId) {
-
         List<MatchingQueue> queue = matchingQueueRepository.findByGameId(gameId);
 
-        // DTO 매핑 로직 변경 (username, displayName, email 순서)
         List<MatchUserDto> usersInQueue = queue.stream()
                 .map(mq -> mq.getUser())
                 .map(u -> new MatchUserDto(
-                        u.getUsername(),    // username (디스코드 사용자명)
-                        u.getDisplayName(), // displayName (닉네임)
-                        u.getEmail()        // email (이메일)
+                        u.getUsername(),
+                        u.getDisplayName(),
+                        u.getEmail()
                 ))
                 .collect(Collectors.toList());
 
@@ -104,13 +109,11 @@ public class MatchingController {
     @PostMapping("/stop")
     public ResponseEntity<?> stopMatching(@AuthenticationPrincipal OAuth2User principal) {
         if (principal == null) return ResponseEntity.status(401).build();
-
         String discordId = String.valueOf(principal.getAttributes().get("id"));
         UserTable user = userRepository.findByDiscordId(discordId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         matchingQueueRepository.deleteByUser(user);
-
         return ResponseEntity.ok(Map.of("status", "matching stopped"));
     }
 }
