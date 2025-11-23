@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.transaction.annotation.Transactional; // 트랜잭션 추가
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -32,15 +32,15 @@ public class MatchingController {
     // 프론트에 보낼 DTO
     public record MatchResponseDto(Long gameId, String gameName, String status) {}
 
-    // 매칭 상태 응답 DTO (유저 정보)
-    public record MatchUserDto(String discordId, String displayName, String username) {}
+    // 매칭 상태 응답 DTO (Discord ID 제거, Email 추가)
+    public record MatchUserDto(String username, String displayName, String email) {}
 
 
     /**
      * 특정 게임에 대한 매칭을 시작합니다.
      */
     @PostMapping("/start")
-    @Transactional // DB 작업이 여러 개(조회, 삭제, 저장)이므로 트랜잭션 처리
+    @Transactional
     public ResponseEntity<?> startMatching(
             @AuthenticationPrincipal OAuth2User principal,
             @RequestBody MatchRequestDto request) {
@@ -58,18 +58,16 @@ public class MatchingController {
         }
 
         // 3. DB에서 게임 정보 찾기 (없으면 새로 저장)
-        // orElseGet: 있으면(Optional) 그걸 쓰고, 없으면(empty) 람다식을 실행해서 새로 만듦
         Game game = gameRepository.findBySteamAppId(gameInfo.steamAppId())
                 .orElseGet(() -> {
                     Game newGame = Game.builder()
                             .steamAppId(gameInfo.steamAppId())
-                            .name(gameInfo.name()) // Steam에서 찾은 실제 이름 사용
+                            .name(gameInfo.name())
                             .build();
                     return gameRepository.save(newGame);
                 });
 
         // 4. 유저가 다른 게임에 이미 매칭 중인지 확인 및 기존 매칭 취소
-        // (deleteByUser는 MatchingQueueRepository에 정의됨)
         matchingQueueRepository.deleteByUser(user);
 
         // 5. 새 매칭 대기열(MatchingQueue)에 유저 추가
@@ -90,10 +88,14 @@ public class MatchingController {
 
         List<MatchingQueue> queue = matchingQueueRepository.findByGameId(gameId);
 
-        // DTO로 변환 (중요: UserTable 엔티티 자체를 반환하면 안 됨)
+        // DTO 매핑 로직 변경 (username, displayName, email 순서)
         List<MatchUserDto> usersInQueue = queue.stream()
                 .map(mq -> mq.getUser())
-                .map(u -> new MatchUserDto(u.getDiscordId(), u.getDisplayName(), u.getUsername()))
+                .map(u -> new MatchUserDto(
+                        u.getUsername(),    // username (디스코드 사용자명)
+                        u.getDisplayName(), // displayName (닉네임)
+                        u.getEmail()        // email (이메일)
+                ))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(usersInQueue);
@@ -107,7 +109,6 @@ public class MatchingController {
         UserTable user = userRepository.findByDiscordId(discordId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // 이 메서드는 MatchingQueueRepository에 이미 존재합니다.
         matchingQueueRepository.deleteByUser(user);
 
         return ResponseEntity.ok(Map.of("status", "matching stopped"));
