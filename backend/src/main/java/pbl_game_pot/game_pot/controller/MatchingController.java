@@ -32,7 +32,7 @@ public class MatchingController {
     private final SteamApiService steamApiService;
     private final RestTemplate restTemplate;
 
-    // 팀원의 봇 서버 주소
+    // 봇 서버 주소
     private static final String BOT_API_URL = "https://game-pot.onrender.com/api/create-party";
 
     public record MatchRequestDto(String gameName) {}
@@ -119,7 +119,7 @@ public class MatchingController {
     }
 
     /**
-     * [강화된 버전] 봇 서버와의 통신 에러를 상세하게 보고합니다.
+     * 봇 서버와의 통신 에러를 상세하게 보고합니다.
      */
     @PostMapping("/party")
     public ResponseEntity<?> createDiscordParty(@AuthenticationPrincipal OAuth2User principal,
@@ -156,7 +156,7 @@ public class MatchingController {
             return ResponseEntity.ok(response.getBody());
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // [중요] 봇 서버가 "거절"한 경우 (400, 404, 500 등)
+            // 봇 서버가 "거절"한 경우 (400, 404, 500 등)
             // 봇 서버가 보낸 "진짜 에러 메시지"를 로그에 찍고 프론트엔드에 전달합니다.
             log.error("봇 서버 응답 에러. 상태코드: {}, 내용: {}", e.getStatusCode(), e.getResponseBodyAsString());
 
@@ -164,7 +164,7 @@ public class MatchingController {
                     .body(Map.of("error", "봇 서버 거절 (" + e.getStatusCode() + "): " + e.getResponseBodyAsString()));
 
         } catch (ResourceAccessException e) {
-            // [중요] 아예 "연결"이 안 된 경우 (서버 꺼짐, 주소 틀림)
+            // 아예 "연결"이 안 된 경우 (서버 꺼짐, 주소 틀림)
             log.error("봇 서버 접속 불가", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of("error", "봇 서버에 접속할 수 없습니다. (서버가 자고 있거나 주소가 틀림)"));
