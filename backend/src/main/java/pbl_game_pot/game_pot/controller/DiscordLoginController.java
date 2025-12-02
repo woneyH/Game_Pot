@@ -16,7 +16,7 @@ import pbl_game_pot.game_pot.db.UserTable;
 public class DiscordLoginController {
     private final UserRepository userRepository;
 
-    record MeDto(String username, String email, String id, String displayName, Long dbId) {}
+    record MeDto(String username, String email, String id, String displayName, Long dbId, String avatarUrl) {}
 
     @GetMapping("/api/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal OAuth2User principal) {
@@ -24,6 +24,14 @@ public class DiscordLoginController {
         String discordId = String.valueOf(principal.getAttributes().get("id"));
         UserTable u = userRepository.findByDiscordId(discordId).orElse(null);
         if (u == null) return ResponseEntity.status(404).build();
-        return ResponseEntity.ok(new MeDto(u.getUsername(), u.getEmail(), u.getDiscordId(), u.getDisplayName(), u.getId()));
+
+        return ResponseEntity.ok(new MeDto(
+                u.getUsername(),
+                u.getEmail(),
+                u.getDiscordId(),
+                u.getDisplayName(),
+                u.getId(),
+                u.getAvatarUrl()
+        ));
     }
 }
