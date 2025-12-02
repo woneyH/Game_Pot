@@ -25,12 +25,21 @@ public class DiscordOAuth2UserService extends DefaultOAuth2UserService {
         String username    = (String) a.getOrDefault("username", "");
         String displayName = (String) a.getOrDefault("global_name", "");
         String email       = (String) a.getOrDefault("email", null);
+        String avatarHash = (String) a.get("avatar");
+        String avatarUrl = null;
+
+        if(avatarHash!=null) {
+            // 디스코드 프로필 사진 URL 형식: https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png
+            avatarUrl = String.format("https://cdn.discordapp.com/avatars/%s/%s.png",discordId, avatarHash);
+        }
+        String finalAvatarUrl = avatarUrl;
 
         userRepository.findByDiscordId(discordId)
                 .map(u -> {
                     u.setUsername(username);
                     u.setDisplayName(displayName);
                     u.setEmail(email);
+                    u.setAvatarUrl(finalAvatarUrl); // [추가] URL 업데이트
                     return userRepository.save(u);
                 })
                 .orElseGet(() -> userRepository.save(UserTable.builder()
@@ -38,6 +47,7 @@ public class DiscordOAuth2UserService extends DefaultOAuth2UserService {
                         .username(username)
                         .displayName(displayName)
                         .email(email)
+                        .avatarUrl(finalAvatarUrl) // [추가] URL 저장
                         .build()));
 
         return user;
