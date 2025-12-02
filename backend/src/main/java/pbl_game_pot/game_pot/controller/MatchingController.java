@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/match")
 @RequiredArgsConstructor
 @Slf4j
+//todo: 아바타 매칭에도 뿌리기.
 public class MatchingController {
 
     private final UserRepository userRepository;
@@ -37,9 +38,8 @@ public class MatchingController {
 
     public record MatchRequestDto(String gameName) {}
     public record MatchResponseDto(Long gameId, String gameName, String status) {}
-    public record MatchUserDto(String username, String displayName, String email) {}
+    public record MatchUserDto(String username, String displayName, String email, String avatarUrl) {}
     public record PartyRequestDto(Long gameId) {}
-
 
     @PostMapping("/start")
     @Transactional
@@ -100,7 +100,8 @@ public class MatchingController {
                 .map(u -> new MatchUserDto(
                         u.getUsername(),
                         u.getDisplayName(),
-                        u.getEmail()
+                        u.getEmail(),
+                        u.getAvatarUrl()
                 ))
                 .collect(Collectors.toList());
 
