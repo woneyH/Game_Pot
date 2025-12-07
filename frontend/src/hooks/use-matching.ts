@@ -59,7 +59,7 @@ export function useMatching() {
       } catch (e) {
         console.error("매칭 상태 조회 실패:", e);
       }
-    }, 5000);
+    }, 2000);
   }, []);
 
   // 폴링 정리
