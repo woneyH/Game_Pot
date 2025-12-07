@@ -81,7 +81,7 @@ export function MatchingScreen({ gameName, gameId, waitingUsers, onCancel }: Mat
                 <div className="bg-muted/50 rounded-lg p-4 text-center">
                   <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />
-                    <span className="text-2xl font-bold">5초</span>
+                    <span className="text-2xl font-bold">2초</span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">갱신 주기</div>
                 </div>
@@ -211,7 +211,7 @@ export function MatchingScreen({ gameName, gameId, waitingUsers, onCancel }: Mat
                   <div className="text-sm">
                     <p className="font-medium text-foreground mb-1">매칭 안내</p>
                     <p className="text-muted-foreground">
-                      평균 대기시간은 2-5분입니다. 대기 중인 플레이어 목록은 5초마다 자동으로 갱신됩니다.
+                      평균 대기시간은 2-5분입니다. 대기 중인 플레이어 목록은 2초마다 자동으로 갱신됩니다.
                     </p>
                   </div>
                 </div>
