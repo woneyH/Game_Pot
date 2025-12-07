@@ -212,7 +212,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
     }
 
-    // 2. VOTEKICK 명령어 (이모지 버전)
+    // 2. VOTEKICK 명령어 (최종 수정 버전)
     if (commandName === 'votekick') {
         if (!member.voice.channelId || !ephemeralChannels.has(member.voice.channelId)) {
             return await interaction.reply({ 
@@ -249,48 +249,48 @@ client.on(Events.InteractionCreate, async (interaction) => {
         
         const voters = voiceChannel.members.filter(m => !m.user.bot); 
         const totalVoters = voters.size;
-        // 과반수 계산 (예: 3명이면 2표)
         const requiredVotes = Math.ceil(totalVoters / 2) + (totalVoters % 2 === 0 ? 1 : 0); 
 
         // 1. 메시지 전송
         await interaction.reply({
             content: `📢 **추방 투표 시작!**\n대상: ${targetMember}\n사유: ${interaction.user}님의 요청\n\n30초 내에 **${requiredVotes}명 이상**이 👍를 누르면 추방됩니다.\n(반대는 👎를 눌러주세요)`,
-            fetchReply: false // 여기서는 필요 없음, 아래에서 따로 호출
+            fetchReply: false 
         });
 
         const message = await interaction.fetchReply();
 
         try {
-            // 2. 이모지 부착
             await message.react('👍');
             await message.react('👎');
         } catch (error) {
-            console.error('이모지 반응 실패 (채널 삭제됨?):', error);
+            console.error('이모지 반응 실패:', error);
             activeVotes.delete(voiceChannel.id);
             return;
         }
 
-        // 3. 이모지 수집기 생성 (30초)
-        const filter = (reaction, user) => {
-            return ['👍', '👎'].includes(reaction.emoji.name) && !user.bot;
-        };
-
+        // 2. 수집기 시작
+        const filter = (reaction, user) => !user.bot;
         const collector = message.createReactionCollector({ filter, time: 30000 });
 
-        collector.on('end', async (collected) => {
+        collector.on('end', async () => {
             activeVotes.delete(voiceChannel.id);
 
-            // 채널이 아직 존재하는지 확인
             try {
-                // 봇의 반응 1개씩 빼기
-                const thumbsUp = (collected.get('👍')?.count || 1) - 1;
-                const thumbsDown = (collected.get('👎')?.count || 1) - 1;
+                const fetchedMsg = await message.fetch(); // 메시지 상태 최신화
+                
+                const upReaction = fetchedMsg.reactions.cache.get('👍');
+                const downReaction = fetchedMsg.reactions.cache.get('👎');
+
+                const thumbsUp = Math.max(0, (upReaction?.count || 0) - 1);
+                const thumbsDown = Math.max(0, (downReaction?.count || 0) - 1);
+
+                console.log(`[투표 결과] 찬성: ${thumbsUp}, 반대: ${thumbsDown}, 필요표: ${requiredVotes}`);
 
                 if (thumbsUp >= requiredVotes && thumbsUp > thumbsDown) {
                     try {
                         await targetMember.voice.disconnect(`Vote kicked`);
                         await voiceChannel.permissionOverwrites.edit(targetMember, { Connect: false });
-                        await interaction.followUp(`✅ **투표 가결!** (찬성 ${thumbsUp}표)\n${targetMember} 님이 추방되었습니다.`);
+                        await interaction.followUp(`✅ **투표 가결!** (찬성 ${thumbsUp}표)\n**${targetMember.user.username}** 님이 추방되었습니다.`);
                     } catch (e) {
                         await interaction.followUp(`⚠️ 가결되었으나 권한 부족으로 추방 실패.`);
                     }
@@ -298,12 +298,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
                     await interaction.followUp(`❌ **투표 부결.** (찬성 ${thumbsUp} / 반대 ${thumbsDown})\n과반수를 넘지 못했거나 반대가 더 많습니다.`);
                 }
             } catch (error) {
-                // 채널이 사라졌거나 메시지를 못 보낼 때 (Unknown Channel 무시)
                 if (error.code !== 10003) console.error('투표 결과 처리 중 오류:', error);
             }
         });
     }
-});
+}); // 👈 이 닫는 괄호가 중요합니다! (누락되었던 부분)
 
 // ---
 
