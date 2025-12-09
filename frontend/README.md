@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# Game_Pot Frontend 개발 서버 가이드
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 사전 준비
 
-Currently, two official plugins are available:
+- Node.js 18+ (LTS 권장)
+- npm 9+ (레포에 `package-lock.json` 사용)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 설치
 
-## React Compiler
+cd frontend
+npm install
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+## 환경 변수
 
-## Expanding the ESLint configuration
+백엔드 기본 URL은 `src/config/constants.ts`에 설정되어 있습니다.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- 기본값: `https://gamepot.azurewebsites.net`
+- 변경이 필요하면 `constants.ts`를 수정하거나 `.env`로 관리하세요.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 개발 서버 실행
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+npm run dev- 브라우저에서 `http://localhost:5173` (Vite 기본 포트) 접속
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 린트/포맷
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+npm run lint
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 주요 경로
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- 매칭 API: `src/api/match.ts`
+- 인증 API: `src/api/auth.ts`
+- 매칭 상태/로직: `src/hooks/use-matching.ts`
+- 인증 상태: `src/hooks/use-auth.ts`
+- 주요 페이지: `src/pages/HomePage.tsx`
+- UI 컴포넌트: `src/components/`
+
+## API 테스트 스크립트 (선택)
+
+- `src/test-api-match.ts`, `src/test-status-console.js`
+- 브라우저 콘솔이나 `npm run dev` 환경에서 import하여 사용 가능
+
+## 디스코드 음성 채널 연동
+
+- 매칭 화면에서 음성 채널 생성/입장 기능 제공 (`src/components/matching-screen.tsx`)
+- 백엔드 `/api/match/party` 엔드포인트와 연동
