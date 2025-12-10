@@ -7,7 +7,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-// 한 유저가 한 게임에만 대기열을 걸 수 있도록 유니크 제약
 @Table(name = "matching_queue", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"user_id", "game_id"})
 })

@@ -16,7 +16,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
                                         AuthenticationException ex) throws IOException {
         res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         res.setContentType("application/json; charset=UTF-8");
-        String msg = ex.getMessage() == null ? "Authentication failed" : ex.getMessage().replace("\"","\\\"");
+        String msg = ex.getMessage() == null ? "Authentication failed" : ex.getMessage().replace("\"", "\\\"");
         res.getWriter().write("{\"authenticated\":false,\"error\":\"" +
                 ex.getClass().getSimpleName() + "\",\"message\":\"" + msg + "\"}");
     }

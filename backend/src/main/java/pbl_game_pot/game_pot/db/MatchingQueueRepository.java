@@ -2,7 +2,6 @@ package pbl_game_pot.game_pot.db;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
-import pbl_game_pot.game_pot.db.UserTable;
 
 import java.time.LocalDateTime;
 import java.util.List;

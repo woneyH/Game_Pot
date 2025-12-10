@@ -44,7 +44,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .build()
                 .encode(StandardCharsets.UTF_8)
                 .toUriString();
-
         res.sendRedirect(targetUrl);
     }
 }

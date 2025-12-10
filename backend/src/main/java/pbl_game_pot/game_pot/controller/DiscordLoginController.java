@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 import pbl_game_pot.game_pot.db.UserRepository;
 import pbl_game_pot.game_pot.db.UserTable;
 
-
 @RestController
 @RequiredArgsConstructor
 public class DiscordLoginController {

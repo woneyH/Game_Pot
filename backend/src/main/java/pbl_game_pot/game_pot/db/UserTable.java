@@ -25,5 +25,3 @@ public class UserTable {
     @Column(length = 255)
     private String avatarUrl;   //디스코드 아바타 이미지
 }
-
-

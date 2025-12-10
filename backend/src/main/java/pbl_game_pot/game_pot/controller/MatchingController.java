@@ -48,6 +48,7 @@ public class MatchingController {
             @RequestBody MatchRequestDto request) {
 
         try {
+            // 1. 유저 인증 확인
             if (principal == null) return ResponseEntity.status(401).build();
             String discordId = String.valueOf(principal.getAttributes().get("id"));
             UserTable user = userRepository.findByDiscordId(discordId)
@@ -58,7 +59,7 @@ public class MatchingController {
                 return ResponseEntity.badRequest().body(Map.of("error", "게임 이름을 입력해주세요."));
             }
 
-            // 1. 게임 검색
+            // 2. 게임 검색 (스팀 API + 비스팀 게임 사전)
             SteamApiService.SteamGameInfo gameInfo = steamApiService.findGameOnSteam(inputGameName);
 
             if (gameInfo == null) {
@@ -66,7 +67,7 @@ public class MatchingController {
                         .body(Map.of("error", "'" + inputGameName + "' 게임을 찾을 수 없습니다. (스팀 공식 영문명으로 시도해보세요)"));
             }
 
-            // 2. 게임 정보 저장/조회
+            // 3. DB 저장 또는 조회
             Game game = gameRepository.findBySteamAppId(gameInfo.steamAppId())
                     .orElseGet(() -> {
                         Game newGame = Game.builder()
@@ -76,11 +77,11 @@ public class MatchingController {
                         return gameRepository.save(newGame);
                     });
 
-            // 3. [핵심 수정] 기존 매칭 삭제 후 '즉시 반영(flush)' (500 에러 방지)
+            // 4. [핵심 수정] 기존 매칭 삭제 후 '즉시 반영(flush)' (500 에러 방지)
             matchingQueueRepository.deleteByUser(user);
-            matchingQueueRepository.flush(); // <--- 이게 없으면 재매칭 시 에러 날 수 있음
+            matchingQueueRepository.flush(); // <--- 이 줄이 500 에러를 막아줍니다!
 
-            // 4. 새 매칭 등록
+            // 5. 새 매칭 등록
             MatchingQueue newMatch = MatchingQueue.builder()
                     .user(user)
                     .game(game)
@@ -91,6 +92,7 @@ public class MatchingController {
 
         } catch (Exception e) {
             log.error("매칭 시작 중 서버 오류 발생", e);
+            // 프론트엔드에 구체적인 에러 메시지 전달
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "서버 오류 발생: " + e.getMessage()));
         }
@@ -124,6 +126,9 @@ public class MatchingController {
         return ResponseEntity.ok(Map.of("status", "matching stopped"));
     }
 
+    /**
+     * 봇 서버와의 통신 에러를 상세하게 보고합니다.
+     */
     @PostMapping("/party")
     public ResponseEntity<?> createDiscordParty(@AuthenticationPrincipal OAuth2User principal,
                                                 @RequestBody PartyRequestDto request) {

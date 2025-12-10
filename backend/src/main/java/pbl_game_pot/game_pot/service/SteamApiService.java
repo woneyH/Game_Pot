@@ -28,13 +28,13 @@ public class SteamApiService {
 
     public record SteamGameInfo(Long steamAppId, String name) {}
 
-    // === 1. [비-스팀 게임] Steam에 없지만 인기 있는 게임들 (가짜 ID 부여) ===
-    // 999로 시작하는 ID는 임의의 값
+    // === 1. [비-스팀 게임] 스팀에 없지만 인기 있는 게임들 (가짜 ID 부여) ===
     private static final Map<String, SteamGameInfo> NON_STEAM_GAMES = new HashMap<>();
     static {
         NON_STEAM_GAMES.put("롤", new SteamGameInfo(999001L, "League of Legends"));
         NON_STEAM_GAMES.put("리그오브레전드", new SteamGameInfo(999001L, "League of Legends"));
         NON_STEAM_GAMES.put("league of legends", new SteamGameInfo(999001L, "League of Legends"));
+        NON_STEAM_GAMES.put("lol", new SteamGameInfo(999001L, "League of Legends"));
 
         NON_STEAM_GAMES.put("발로란트", new SteamGameInfo(999002L, "VALORANT"));
         NON_STEAM_GAMES.put("발로", new SteamGameInfo(999002L, "VALORANT"));
@@ -42,14 +42,14 @@ public class SteamApiService {
 
         NON_STEAM_GAMES.put("오버워치", new SteamGameInfo(999003L, "Overwatch 2"));
         NON_STEAM_GAMES.put("옵치", new SteamGameInfo(999003L, "Overwatch 2"));
-        NON_STEAM_GAMES.put("overwatch", new SteamGameInfo(999003L, "Overwatch 2"));
+        NON_STEAM_GAMES.put("오버워치2", new SteamGameInfo(999003L, "Overwatch 2"));
 
         NON_STEAM_GAMES.put("마인크래프트", new SteamGameInfo(999004L, "Minecraft"));
         NON_STEAM_GAMES.put("마크", new SteamGameInfo(999004L, "Minecraft"));
 
-        NON_STEAM_GAMES.put("피파4",new SteamGameInfo(9990005L,"FC 온라인4"));
-        NON_STEAM_GAMES.put("fc4",new SteamGameInfo(9990005L,"FC 온라인4"));
-        NON_STEAM_GAMES.put("fc온라인",new SteamGameInfo(9990005L,"FC 온라인4"));
+        // 피파4 (FC 온라인)
+        NON_STEAM_GAMES.put("피파4", new SteamGameInfo(999005L, "FC Online"));
+        NON_STEAM_GAMES.put("fc온라인", new SteamGameInfo(999005L, "FC Online"));
     }
 
     // === 2. [스팀 게임 별명] 한글 줄임말 -> 스팀 공식 명칭 매핑 ===
@@ -58,9 +58,10 @@ public class SteamApiService {
         // [배그]
         ALIAS_MAP.put("배그", "PUBG: BATTLEGROUNDS");
         ALIAS_MAP.put("pubg", "PUBG: BATTLEGROUNDS");
+        ALIAS_MAP.put("펍지", "PUBG: BATTLEGROUNDS");
 
         // [스포츠]
-        ALIAS_MAP.put("피파", "EA SPORTS FC");
+        ALIAS_MAP.put("피파24", "EA SPORTS FC 24");
         ALIAS_MAP.put("fc24", "EA SPORTS FC 24");
         ALIAS_MAP.put("fc25", "EA SPORTS FC 25");
 
@@ -70,30 +71,36 @@ public class SteamApiService {
         ALIAS_MAP.put("엘든링", "ELDEN RING");
         ALIAS_MAP.put("몬헌", "Monster Hunter: World");
         ALIAS_MAP.put("몬스터헌터", "Monster Hunter: World");
-        ALIAS_MAP.put("로아", "Lost Ark"); // 스팀판
+        ALIAS_MAP.put("몬헌와일즈", "Monster Hunter Wilds");
+        ALIAS_MAP.put("로아", "Lost Ark");
         ALIAS_MAP.put("로스트아크", "Lost Ark");
 
         // [캐주얼/기타]
         ALIAS_MAP.put("철권", "TEKKEN 8");
+        ALIAS_MAP.put("철권8", "TEKKEN 8");
         ALIAS_MAP.put("팰월드", "Palworld");
         ALIAS_MAP.put("리썰", "Lethal Company");
         ALIAS_MAP.put("리썰컴퍼니", "Lethal Company");
         ALIAS_MAP.put("스듀", "Stardew Valley");
+        ALIAS_MAP.put("스타듀밸리", "Stardew Valley");
         ALIAS_MAP.put("어몽어스", "Among Us");
         ALIAS_MAP.put("폴가이즈", "Fall Guys");
+        ALIAS_MAP.put("사펑", "Cyberpunk 2077");
+        ALIAS_MAP.put("사이버펑크", "Cyberpunk 2077");
     }
 
     public SteamGameInfo findGameOnSteam(String userInput) {
         String cleanInput = userInput.toLowerCase().trim();
 
         // 1. [우선순위 1] 비-스팀 게임인지 먼저 확인 (롤, 발로란트 등)
+        // 여기에 걸리면 스팀 API 호출 안 하고 바로 리턴합니다.
         if (NON_STEAM_GAMES.containsKey(cleanInput)) {
             SteamGameInfo info = NON_STEAM_GAMES.get(cleanInput);
             log.info("비-스팀 게임 감지: {} -> {}", userInput, info.name());
             return info;
         }
 
-        // 2. [우선순위 2] 별명 사전에서 검색어 변환
+        // 2. [우선순위 2] 별명 사전에서 검색어 변환 (배그 -> PUBG)
         String searchTerm = ALIAS_MAP.getOrDefault(cleanInput, userInput);
         if (ALIAS_MAP.containsKey(cleanInput)) {
             log.info("별명 감지: '{}' -> '{}'", userInput, searchTerm);
@@ -112,8 +119,9 @@ public class SteamApiService {
         log.info("Steam API 호출: {}", uri);
 
         try {
+            // 봇 차단 방지 헤더
             HttpHeaders headers = new HttpHeaders();
-            headers.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            headers.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             ResponseEntity<String> response = restTemplate.exchange(
@@ -130,13 +138,14 @@ public class SteamApiService {
                 return null;
             }
 
+            // 첫 번째 결과 가져오기
             JsonNode firstItem = itemsNode.get(0);
             long steamAppId = firstItem.path("id").asLong();
             String foundName = firstItem.path("name").asText();
 
             if (steamAppId == 0 || foundName.isEmpty()) return null;
 
-            log.info("스팀 API 성공: '{}' -> {}", searchTerm, foundName);
+            log.info("스팀 API 성공: '{}' -> [ID:{}] {}", searchTerm, steamAppId, foundName);
             return new SteamGameInfo(steamAppId, foundName);
 
         } catch (HttpClientErrorException e) {

@@ -39,7 +39,7 @@ public class DiscordOAuth2UserService extends DefaultOAuth2UserService {
                     u.setUsername(username);
                     u.setDisplayName(displayName);
                     u.setEmail(email);
-                    u.setAvatarUrl(finalAvatarUrl); // [추가] URL 업데이트
+                    u.setAvatarUrl(finalAvatarUrl); // URL 업데이트
                     return userRepository.save(u);
                 })
                 .orElseGet(() -> userRepository.save(UserTable.builder()
@@ -47,7 +47,7 @@ public class DiscordOAuth2UserService extends DefaultOAuth2UserService {
                         .username(username)
                         .displayName(displayName)
                         .email(email)
-                        .avatarUrl(finalAvatarUrl) // [추가] URL 저장
+                        .avatarUrl(finalAvatarUrl) // URL 저장
                         .build()));
 
         return user;
