@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord 파티 생성기 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #5865f2; text-align: center; margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #23272a; }
+        textarea { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: vertical; }
+        button { background-color: #5865f2; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: #4752c4; }
+        #response-area { margin-top: 20px; padding: 15px; background-color: #e9e9f7; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-size: 14px; }
+        .warning { color: red; margin-bottom: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Discord 파티 채널 생성 테스트</h1>
+        
+        <p class="warning">
+            ⚠️ 이 페이지는 테스트용입니다. 반드시 아래 JavaScript 코드에 **Render Public URL**을 입력해야 작동합니다.
+        </p>
+
+        <label for="memberIdsInput">초대할 유저 ID 목록 (쉼표 또는 줄 바꿈으로 구분):</label>
+        <textarea id="memberIdsInput" rows="5" placeholder="예시: 123456789012345678, 987654321098765432"></textarea>
+
+        <button onclick="createParty()">파티 채널 생성 요청</button>
+
+        <label for="response-area">봇 응답:</label>
+        <pre id="response-area">여기에 봇의 응답이 표시됩니다.</pre>
+    </div>
+
+    <script>
+        // 🚨 중요: 여기에 실제 Render URL을 입력해야 합니다!
+        const RENDER_PUBLIC_URL = "https://game-pot.onrender.com"; 
+        const ENDPOINT = "/api/create-party";
+
+        async function createParty() {
+            // 🎯 수정 1: ID가 'memberIdsInput'인 요소에서 값을 가져옵니다.
+            const idsInput = document.getElementById('memberIdsInput').value; 
+            const responseArea = document.getElementById('response-area');
+            responseArea.textContent = '요청을 보내는 중...';
+
+            if (!idsInput.trim()) {
+                responseArea.textContent = '초대할 유저 ID를 입력하세요.';
+                return;
+            }
+            
+            // 🎯 수정 2: 유저 ID 목록을 배열로 정리
+            const memberIds = idsInput
+                .split(/[\s,]+/) 
+                .map(id => id.trim())
+                .filter(id => id.length > 10 && !isNaN(id)); // 유효한 ID인지 최종 필터링
+
+            if (memberIds.length === 0) {
+                responseArea.textContent = '유효한 유저 ID가 없습니다.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${RENDER_PUBLIC_URL}${ENDPOINT}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        // 🎯 수정 3: memberIds라는 이름으로 전송
+                        memberIds: memberIds 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 🎯 수정 4: '찾을 수 없는 닉네임' 대신 '찾을 수 없는 ID'로 수정
+                    responseArea.textContent = `✅ 성공!\n메시지: ${data.message}\n초대 링크: ${data.inviteLink || 'N/A'}\n찾을 수 없는 ID: ${data.notFoundIds.join(', ') || '없음'}`;
+                } else {
+                    responseArea.textContent = `❌ 오류 발생 (${response.status} ${response.statusText})\n메시지: ${data.error || 'Internal Error'}`;
+                }
+
+            } catch (error) {
+                responseArea.textContent = `❌ 네트워크 요청 실패: Render URL이 정확한지, 봇이 켜져 있는지 확인하세요.`;
+                console.error('Fetch error:', error);
+            }
+        }
+    </script>
+
+</body>
+</html>
